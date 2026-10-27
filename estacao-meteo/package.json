@@ -1,15 +1,11 @@
 {
   "name": "estacao-meteo",
   "version": "1.0.0",
-  "description": "Estação meteorológica (PAP) - painel web com alertas ajustáveis",
   "main": "server.js",
+  "engines": {
+    "node": "20.x"
+  },
   "scripts": {
     "start": "node server.js"
-  },
-  "engines": {
-    "node": ">=18"
-  },
-  "dependencies": {
-    "express": "^4.19.2"
   }
 }
