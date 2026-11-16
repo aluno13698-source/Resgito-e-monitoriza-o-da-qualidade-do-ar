@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: registo-monitorizacao-qualidade-ar
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: API_KEY
+        value: 53d9eac4dd9fad04445268d6cebe3ba8
+      - key: ADMIN_PASSWORD
+        value: admin123

@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Estação de Monitorização da Qualidade do Ar</title>
+  <link rel="icon" href="/icon" />
+  <link rel="apple-touch-icon" href="/icon" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: rgba(30, 41, 59, 0.84);
+      --card-border: rgba(51, 65, 85, 0.9);
+      --text: #f8fafc;
+      --muted: #cbd5e1;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --success: #22c55e;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      background-image:
+        linear-gradient(rgba(15, 23, 42, 0.68), rgba(15, 23, 42, 0.78)),
+        url('/fundo');
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+      background-repeat: no-repeat;
+      color: var(--text);
+      padding: 20px;
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+      padding: 16px 20px;
+      background: var(--card);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .app-logo {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      object-fit: cover;
+      border: 1px solid var(--card-border);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+    }
+
+    header h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid var(--card-border);
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 0.875rem;
+      color: var(--muted);
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #94a3b8;
+    }
+
+    .dot.online {
+      background: var(--success);
+      box-shadow: 0 0 8px var(--success);
+    }
+
+    /* Banner de Alerta */
+    .alerta-banner {
+      display: none;
+      background: rgba(185, 28, 28, 0.82);
+      backdrop-filter: blur(8px);
+      border: 2px solid var(--danger);
+      color: #fecaca;
+      padding: 16px 20px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      animation: pulse 1.8s infinite;
+    }
+
+    .alerta-banner.ativo {
+      display: block;
+    }
+
+    .alerta-banner h2 {
+      color: #ffffff;
+      font-size: 1.15rem;
+      margin-bottom: 4px;
+    }
+
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.35); }
+      50% { box-shadow: 0 0 18px 4px rgba(239, 68, 68, 0.45); }
+    }
+
+    /* Grelha de Cartões de Sensores */
+    .grid-sensores {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .card {
+      background: var(--card);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 18px;
+    }
+
+    .card-title {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .card-value {
+      font-size: 2rem;
+      font-weight: 700;
+    }
+
+    .card-sub {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    /* Grelha de Gráficos (todos os 5 sensores) */
+    .grid-graficos {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+
+    @media (max-width: 480px) {
+      .grid-graficos {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .section-title {
+      font-size: 1.08rem;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .badge-unit {
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: rgba(15, 23, 42, 0.8);
+      color: var(--muted);
+      border: 1px solid var(--card-border);
+    }
+
+    .chart-box {
+      position: relative;
+      height: 230px;
+      width: 100%;
+    }
+
+    /* Secção inferior: Buzzer + Definições */
+    .grid-bottom {
+      display: grid;
+      grid-template-columns: 1fr 1.4fr;
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+
+    @media (max-width: 920px) {
+      .grid-bottom {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .form-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin-top: 12px;
+    }
+
+    select, input[type="number"], input[type="password"] {
+      background: rgba(15, 23, 42, 0.85);
+      color: var(--text);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 0.95rem;
+    }
+
+    select {
+      flex: 1;
+      min-width: 200px;
+    }
+
+    button {
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 18px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    button:hover {
+      background: var(--primary-hover);
+    }
+
+    .feedback {
+      margin-top: 10px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      min-height: 22px;
+    }
+
+    .settings-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .field label {
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+
+    .colors-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .color-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 0.82rem;
+    }
+
+    input[type="color"] {
+      border: none;
+      width: 28px;
+      height: 28px;
+      background: none;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="header-left">
+        <img src="/icon" alt="Ícone da App" class="app-logo" onerror="this.style.display='none'" />
+        <div>
+          <h1>Estação de Monitorização da Qualidade do Ar</h1>
+          <p style="color: var(--muted); font-size: 0.9rem;">Telemetria em Tempo Real • Arduino Uno WiFi Rev2</p>
+        </div>
+      </div>
+      <div class="status-badge">
+        <span class="dot" id="status-dot"></span>
+        <span id="status-texto">A aguardar dados do Arduino...</span>
+      </div>
+    </header>
+
+    <!-- Banner de Alerta -->
+    <div id="alerta-banner" class="alerta-banner">
+      <h2>⚠️ ALERTA DE QUALIDADE DO AR / AMBIENTE!</h2>
+      <p id="alerta-detalhes">Um ou mais sensores ultrapassaram o limite definido.</p>
+    </div>
+
+    <!-- Cartões dos 5 Sensores -->
+    <div class="grid-sensores">
+      <div class="card">
+        <div class="card-title">Temperatura (DHT22)</div>
+        <div class="card-value" id="val-temp" style="color: #fb923c;">-- °C</div>
+        <div class="card-sub" id="lim-temp">Limite: -- °C</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Humidade (DHT22)</div>
+        <div class="card-value" id="val-hum" style="color: #22d3ee;">-- %</div>
+        <div class="card-sub" id="lim-hum">Limite: -- %</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Gás / Fumo (MQ-2)</div>
+        <div class="card-value" id="val-gas" style="color: #facc15;">--</div>
+        <div class="card-sub" id="lim-gas">Limite: -- (0-1023)</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Metano CH₄ (MQ-4)</div>
+        <div class="card-value" id="val-mq4" style="color: #f87171;">-- %</div>
+        <div class="card-sub" id="estado-mq4">Ar limpo: 0% - 15%</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Luminosidade (LDR)</div>
+        <div class="card-value" id="val-ldr" style="color: #4ade80;">--</div>
+        <div class="card-sub" id="lim-ldr">Limite: -- (0-1023)</div>
+      </div>
+    </div>
+
+    <!-- Todos os 5 Gráficos em Tempo Real -->
+    <div class="grid-graficos">
+      <div class="card">
+        <h3 class="section-title">
+          <span>🌡️ Temperatura (DHT22)</span>
+          <span class="badge-unit">°C</span>
+        </h3>
+        <div class="chart-box">
+          <canvas id="chartTemp"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 class="section-title">
+          <span>💧 Humidade (DHT22)</span>
+          <span class="badge-unit">%</span>
+        </h3>
+        <div class="chart-box">
+          <canvas id="chartHum"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 class="section-title">
+          <span>💨 Gás / Fumo (MQ-2)</span>
+          <span class="badge-unit">0 – 1023</span>
+        </h3>
+        <div class="chart-box">
+          <canvas id="chartGas"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 class="section-title">
+          <span>🔥 Metano CH₄ (MQ-4)</span>
+          <span class="badge-unit">%</span>
+        </h3>
+        <div class="chart-box">
+          <canvas id="chartMq4"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 class="section-title">
+          <span>☀️ Luminosidade (LDR)</span>
+          <span class="badge-unit">0 – 1023</span>
+        </h3>
+        <div class="chart-box">
+          <canvas id="chartLdr"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Secção Inferior: Teste do Buzzer + Definições -->
+    <div class="grid-bottom">
+      <div class="card">
+        <h3 class="section-title">🔊 Teste do Buzzer & Músicas</h3>
+        <p style="color: var(--muted); font-size: 0.9rem;">
+          Seleciona um som para testar o buzzer do Arduino remotamente. Toca na próxima comunicação (até 5s).
+        </p>
+
+        <div class="form-row">
+          <select id="select-musica">
+            <option value="teste">🔔 Beep de Teste (Rápido)</option>
+            <option value="mario">🍄 Super Mario Bros</option>
+            <option value="starwars">⚔️ Star Wars (Marcha Imperial)</option>
+            <option value="nokia">📱 Toque Clássico Nokia</option>
+            <option value="parabens">🎂 Parabéns a Você</option>
+          </select>
+          <button type="button" onclick="tocarBuzzer()">▶ Tocar no Arduino</button>
+        </div>
+
+        <div id="status-buzzer" class="feedback"></div>
+
+        <hr style="border: none; border-top: 1px solid var(--card-border); margin: 20px 0;" />
+
+        <h4 style="font-size: 0.95rem; margin-bottom: 6px;">💡 Estado dos Atuadores Locais</h4>
+        <p style="color: var(--muted); font-size: 0.85rem;">
+          • <strong>Estado Normal:</strong> LED Verde aceso e Buzzer silencioso.<br />
+          • <strong>Estado de Alerta:</strong> LED Vermelho aceso, Buzzer ativo e cabeçalho vermelho no display OLED.
+        </p>
+      </div>
+
+      <div class="card">
+        <h3 class="section-title">⚙️ Definições de Alertas e Cores do OLED</h3>
+        <p style="color: var(--muted); font-size: 0.88rem;">
+          Altera os limites que disparam o alerta (LED vermelho + Buzzer) e personaliza as cores do ecrã RGB SSD1351.
+        </p>
+
+        <h4 style="margin-top: 14px; font-size: 0.92rem; color: #e2e8f0;">1. Limites de Alerta</h4>
+        <div class="settings-grid">
+          <div class="field">
+            <label for="cfg-tempMax">Temp. Máx (°C)</label>
+            <input type="number" id="cfg-tempMax" step="0.5" />
+          </div>
+          <div class="field">
+            <label for="cfg-humMax">Humidade Máx (%)</label>
+            <input type="number" id="cfg-humMax" step="1" />
+          </div>
+          <div class="field">
+            <label for="cfg-gasMax">Gás MQ-2 Máx</label>
+            <input type="number" id="cfg-gasMax" step="10" />
+          </div>
+          <div class="field">
+            <label for="cfg-mq4Max">Metano MQ-4 Máx (%)</label>
+            <input type="number" id="cfg-mq4Max" step="1" />
+          </div>
+          <div class="field">
+            <label for="cfg-ldrMax">Luz LDR Máx</label>
+            <input type="number" id="cfg-ldrMax" step="10" />
+          </div>
+        </div>
+
+        <h4 style="margin-top: 16px; font-size: 0.92rem; color: #e2e8f0;">2. Cores do Display OLED (RGB565)</h4>
+        <div class="colors-grid" id="colors-container"></div>
+
+        <div class="form-row" style="margin-top: 16px;">
+          <input type="password" id="cfg-password" placeholder="Palavra-passe de administrador" />
+          <button type="button" onclick="guardarDefinicoes()">💾 Guardar Definições</button>
+        </div>
+        <div id="status-config" class="feedback"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const nomesCores = [
+      'Fundo',
+      'Título',
+      'Alerta',
+      'Valores',
+      'Temp.',
+      'Humidade',
+      'MQ-2 Gás',
+      'Luz LDR',
+      'MQ-4 CH₄'
+    ];
+
+    function criarGrafico(canvasId, label, cor, bgCor) {
+      const ctx = document.getElementById(canvasId).getContext('2d');
+      return new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [{
+            label,
+            data: [],
+            borderColor: cor,
+            backgroundColor: bgCor,
+            borderWidth: 2,
+            pointRadius: 2.5,
+            fill: true,
+            tension: 0.3
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            x: {
+              ticks: { color: '#cbd5e1', maxRotation: 45, minRotation: 45, font: { size: 10 } },
+              grid: { color: 'rgba(148,163,184,0.12)' }
+            },
+            y: {
+              ticks: { color: '#cbd5e1', font: { size: 11 } },
+              grid: { color: 'rgba(148,163,184,0.12)' }
+            }
+          }
+        }
+      });
+    }
+
+    const chartTemp = criarGrafico('chartTemp', 'Temperatura (°C)', '#fb923c', 'rgba(251, 146, 60, 0.16)');
+    const chartHum  = criarGrafico('chartHum',  'Humidade (%)',     '#22d3ee', 'rgba(34, 211, 238, 0.16)');
+    const chartGas  = criarGrafico('chartGas',  'Gás MQ-2',         '#facc15', 'rgba(250, 204, 21, 0.16)');
+    const chartMq4  = criarGrafico('chartMq4',  'Metano MQ-4 (%)',  '#f87171', 'rgba(248, 113, 113, 0.16)');
+    const chartLdr  = criarGrafico('chartLdr',  'Luz LDR',          '#4ade80', 'rgba(74, 222, 128, 0.16)');
+
+    function descreverMq4(val) {
+      if (val === null || val === undefined) return 'Ar limpo: 0% - 15%';
+      if (val <= 15) return 'Normal (Ar limpo)';
+      if (val <= 30) return 'Ligeira alteração';
+      if (val <= 50) return 'Aviso / Atenção';
+      return 'Perigo / Concentração alta';
+    }
+
+    async function atualizarDados() {
+      try {
+        const res = await fetch('/api/dados');
+        const data = await res.json();
+        const { atual, historico, limites } = data;
+
+        document.getElementById('lim-temp').textContent = `Limite: ${limites.tempMax} °C`;
+        document.getElementById('lim-hum').textContent = `Limite: ${limites.humMax} %`;
+        document.getElementById('lim-gas').textContent = `Limite: ${limites.gasMax} (0-1023)`;
+        document.getElementById('lim-ldr').textContent = `Limite: ${limites.ldrMax} (0-1023)`;
+
+        if (atual && atual.atualizadoEm) {
+          document.getElementById('val-temp').textContent = `${atual.temp.toFixed(1)} °C`;
+          document.getElementById('val-hum').textContent = `${atual.hum.toFixed(0)} %`;
+          document.getElementById('val-gas').textContent = atual.gas;
+          document.getElementById('val-mq4').textContent = `${atual.mq4} %`;
+          document.getElementById('estado-mq4').textContent = `${descreverMq4(atual.mq4)} (Limite: ${limites.mq4Max}%)`;
+          document.getElementById('val-ldr').textContent = atual.ldr;
+
+          const diffSeg = Math.max(0, Math.round((Date.now() - new Date(atual.atualizadoEm).getTime()) / 1000));
+          const dot = document.getElementById('status-dot');
+          const txt = document.getElementById('status-texto');
+
+          if (diffSeg <= 15) {
+            dot.classList.add('online');
+            txt.textContent = `Online • Atualizado há ${diffSeg}s`;
+          } else {
+            dot.classList.remove('online');
+            txt.textContent = `Última leitura há ${diffSeg}s`;
+          }
+
+          const banner = document.getElementById('alerta-banner');
+          if (atual.alerta) {
+            banner.classList.add('ativo');
+            document.getElementById('alerta-detalhes').textContent = atual.motivosAlerta.join(' • ');
+          } else {
+            banner.classList.remove('ativo');
+          }
+        }
+
+        if (Array.isArray(historico)) {
+          const ultimos = historico.slice(-25);
+          const labels = ultimos.map(item =>
+            new Date(item.timestamp).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+          );
+
+          const pares = [
+            [chartTemp, ultimos.map(i => i.temp)],
+            [chartHum,  ultimos.map(i => i.hum)],
+            [chartGas,  ultimos.map(i => i.gas)],
+            [chartMq4,  ultimos.map(i => i.mq4)],
+            [chartLdr,  ultimos.map(i => i.ldr)]
+          ];
+
+          for (const [chart, serie] of pares) {
+            chart.data.labels = labels;
+            chart.data.datasets[0].data = serie;
+            chart.update('none');
+          }
+        }
+      } catch (err) {
+        console.error('Erro ao obter dados:', err);
+      }
+    }
+
+    async function tocarBuzzer() {
+      const som = document.getElementById('select-musica').value;
+      const statusEl = document.getElementById('status-buzzer');
+      statusEl.style.color = '#93c5fd';
+      statusEl.textContent = 'A enviar ordem ao servidor...';
+
+      try {
+        const res = await fetch('/api/buzzer', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ som })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          statusEl.style.color = '#4ade80';
+          statusEl.textContent = '✅ ' + data.mensagem;
+        } else {
+          statusEl.style.color = '#f87171';
+          statusEl.textContent = '❌ ' + (data.erro || 'Erro ao enviar pedido');
+        }
+      } catch (err) {
+        statusEl.style.color = '#f87171';
+        statusEl.textContent = '❌ Falha de ligação ao servidor.';
+      }
+    }
+
+    async function carregarDefinicoes() {
+      try {
+        const res = await fetch('/api/config');
+        const cfg = await res.json();
+
+        document.getElementById('cfg-tempMax').value = cfg.limites.tempMax;
+        document.getElementById('cfg-humMax').value = cfg.limites.humMax;
+        document.getElementById('cfg-gasMax').value = cfg.limites.gasMax;
+        document.getElementById('cfg-mq4Max').value = cfg.limites.mq4Max;
+        document.getElementById('cfg-ldrMax').value = cfg.limites.ldrMax;
+
+        const container = document.getElementById('colors-container');
+        container.innerHTML = '';
+        cfg.coresHex.forEach((hex, idx) => {
+          const div = document.createElement('div');
+          div.className = 'color-item';
+          div.innerHTML = `
+            <span>${nomesCores[idx] || 'Cor ' + (idx + 1)}</span>
+            <input type="color" id="cor-${idx}" value="${hex}" />
+          `;
+          container.appendChild(div);
+        });
+      } catch (err) {
+        console.error('Erro ao carregar definições:', err);
+      }
+    }
+
+    async function guardarDefinicoes() {
+      const password = document.getElementById('cfg-password').value;
+      const statusEl = document.getElementById('status-config');
+
+      const limites = {
+        tempMax: document.getElementById('cfg-tempMax').value,
+        humMax: document.getElementById('cfg-humMax').value,
+        gasMax: document.getElementById('cfg-gasMax').value,
+        mq4Max: document.getElementById('cfg-mq4Max').value,
+        ldrMax: document.getElementById('cfg-ldrMax').value
+      };
+
+      const coresHex = [];
+      for (let i = 0; i < 9; i++) {
+        coresHex.push(document.getElementById(`cor-${i}`).value);
+      }
+
+      try {
+        const res = await fetch('/api/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password, limites, coresHex })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          statusEl.style.color = '#4ade80';
+          statusEl.textContent = '✅ ' + data.mensagem;
+          atualizarDados();
+        } else {
+          statusEl.style.color = '#f87171';
+          statusEl.textContent = '❌ ' + (data.erro || 'Erro ao guardar');
+        }
+      } catch (err) {
+        statusEl.style.color = '#f87171';
+        statusEl.textContent = '❌ Erro de ligação ao servidor.';
+      }
+    }
+
+    carregarDefinicoes();
+    atualizarDados();
+    setInterval(atualizarDados, 2000);
+  </script>
+</body>
+</html>
